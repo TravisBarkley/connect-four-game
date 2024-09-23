@@ -13,7 +13,7 @@ This is a simple Connect Four game implemented using Python and sockets.
 
 **Additional resources:**
 * [Link to Python documentation](https://docs.python.org/3/)
-* [Link to sockets tutorial](https://docs.python.org/3/howto/sockets.html)
+* [Link to sockets tutorial](https://realpython.com/python-sockets/)
 
 
 # Statement of Work for Multiplayer Connect Four Game
