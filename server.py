@@ -26,12 +26,21 @@ def handle_message(message, data):
     if action == "join":
         if len(lobby["players"]) < 2:
             lobby["players"].append(message)
-            message.send_json({"type": "info", "content": f"Joined lobby {lobby['code']}"})
-            if len(lobby["players"]) == 2:
+            message.send_json({
+                "type": "info",
+                "content": f"Joined lobby {lobby['code']}"
+            })
+            if len(lobby["players"]) == 1:
+                message.send_json({
+                    "type": "info",
+                    "content": f"Waiting for opponent. Lobby code: {lobby['code']}"
+                })
+            else:
                 broadcast({"type": "start", "content": "Game starting!"})
         else:
             message.send_json({"type": "error", "content": "Lobby is full."})
             message.close()
+
     elif action == "quit":
         message.close()
         lobby["players"].remove(message)
@@ -52,6 +61,10 @@ lsock.bind((host, port))
 lsock.listen()
 print(f"Listening on {host}:{port}")
 lsock.setblocking(False)
+
+lobby["code"] = create_lobby_code()
+print(f"Lobby code: {lobby['code']}")
+
 sel.register(lsock, selectors.EVENT_READ, data=None)
 
 try:

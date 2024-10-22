@@ -50,7 +50,7 @@ try:
             print("Unknown command. Try 'join <code>' or 'quit'.")
             continue
 
-        message.request = request  # Assign the request to the message.
+        message.request = request  # Assign the request.
         message.queue_request()
 
         events = sel.select(timeout=1)
