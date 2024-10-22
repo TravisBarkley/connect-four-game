@@ -204,3 +204,10 @@ _______________________________________________________
         message = self._create_message(**response)
         self.response_created = True
         self._send_buffer += message
+
+    def send_json(self, content):
+        """Encode a JSON message and queue it for sending."""
+        encoded_content = self._json_encode(content, "utf-8")
+        message_length = len(encoded_content)
+        self._send_buffer += encoded_content
+        self.selector.modify(self.sock, selectors.EVENT_WRITE, data=self)
