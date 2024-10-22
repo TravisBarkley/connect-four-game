@@ -10,58 +10,54 @@ import libclient
 
 sel = selectors.DefaultSelector()
 
-
 def create_request(action):
-    if action == "join":
-        return dict(
-            type="text/json",
-            encoding="utf-8",
-            content=dict(action=action),
-        )
-    else:
-        return dict(
-            type="binary/custom-client-binary-type",
-            encoding="binary",
-            content=bytes(action, encoding="utf-8"),
-        )
+    return dict(
+        type="text/json",
+        encoding="utf-8",
+        content=dict(action=action),
+    )
 
 
-def start_connection(host, port, request):
+def start_connection(host, port):
     addr = (host, port)
     print("starting connection to", addr)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setblocking(False)
     sock.connect_ex(addr)
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
-    message = libclient.Message(sel, sock, addr, request)
+    message = libclient.Message(sel, sock, addr, None)
     sel.register(sock, events, data=message)
+    return message
 
-if len(sys.argv) != 4:
-    print("usage:", sys.argv[0], "<host> <port> <action>")
+if len(sys.argv) != 3:
+    print("Usage:", sys.argv[0], "<host> <port>")
     sys.exit(1)
 
 host, port = sys.argv[1], int(sys.argv[2])
-action = sys.argv[3]
-request = create_request(action)
-start_connection(host, port, request)
+message = start_connection(host, port)
 
 try:
     while True:
+        action = input("Enter command (or 'quit' to exit): ").strip()
+        request = create_request(action)
+        message.request = request
+        message.queue_request()  
+
         events = sel.select(timeout=1)
         for key, mask in events:
-            message = key.data
+            msg = key.data
             try:
-                message.process_events(mask)
+                msg.process_events(mask)
             except Exception:
-                print(
-                    "main: error: exception for",
-                    f"{message.addr}:\n{traceback.format_exc()}",
-                )
-                message.close()
-        # Check for a socket being monitored to continue.
-        if not sel.get_map():
+                print(f"main: error: exception for {msg.addr}:\n{traceback.format_exc()}")
+                msg.close()
+
+        if action == "quit":
+            print("Exiting...")
             break
+
 except KeyboardInterrupt:
-    print("caught keyboard interrupt, exiting")
+    print("Caught keyboard interrupt, exiting")
+
 finally:
     sel.close()
