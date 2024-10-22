@@ -4,19 +4,42 @@ import sys
 import socket
 import selectors
 import traceback
-
+import random
 import libserver
 
 sel = selectors.DefaultSelector()
+lobby = {"code": None, "players": []}
+
+def create_lobby_code():
+    return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=4))
 
 
 def accept_wrapper(sock):
-    conn, addr = sock.accept()  # Should be ready to read
+    conn, addr = sock.accept() 
     print("Accepted connection from", addr)
     conn.setblocking(False)
     message = libserver.Message(sel, conn, addr)
     sel.register(conn, selectors.EVENT_READ, data=message)
 
+def handle_message(message, data):
+    action = data.get("content", {}).get("action")
+    if action == "join":
+        if len(lobby["players"]) < 2:
+            lobby["players"].append(message)
+            message.send_json({"type": "info", "content": f"Joined lobby {lobby['code']}"})
+            if len(lobby["players"]) == 2:
+                broadcast({"type": "start", "content": "Game starting!"})
+        else:
+            message.send_json({"type": "error", "content": "Lobby is full."})
+            message.close()
+    elif action == "quit":
+        message.close()
+        lobby["players"].remove(message)
+        broadcast({"type": "info", "content": "Opponent disconnected."})
+
+def broadcast(msg):
+    for player in lobby["players"]:
+        player.send_json(msg)
 
 if len(sys.argv) != 3:
     print("Usage:", sys.argv[0], "<host> <port>")
@@ -40,13 +63,16 @@ try:
             else:
                 message = key.data
                 try:
-                    message.process_events(mask)
-                except Exception:
-                    print(f"main: error: exception for {message.addr}:\n{traceback.format_exc()}")
+                    data = message.process_events(mask)
+                    if data:
+                        handle_message(message, data)
+                except Exception as e:
+                    print(f"Error: {e}")
                     message.close()
-
+                    if message in lobby["players"]:
+                        lobby["players"].remove(message)
+                        broadcast({"type": "info", "content": "Opponent disconnected."})
 except KeyboardInterrupt:
-    print("Caught keyboard interrupt, exiting")
-
+    print("Server shutting down...")
 finally:
     sel.close()
