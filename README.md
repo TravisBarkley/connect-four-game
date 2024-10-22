@@ -7,7 +7,7 @@ As of 10/20/24 23:00 MST work for sprint 2 has not been uploaded, I went on a ve
 1. **Start the server:** `./server.py <host> <port>`
 2. **Connect clients:** `./client.py <host> <port>
 3. **Play the game:** Players take turns entering their moves. The first player to get four in a row wins!
-3.5 **Reality:** After connecting to the server the client can enter a `quit` command to disconnect.
+4. **Reality:** After connecting to the server the client can enter a `quit` command to disconnect.
 
 **Technologies used:**
 * Python
