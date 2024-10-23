@@ -32,31 +32,29 @@ class Message:
 
     def _read(self):
         try:
-            # Should be ready to read
             data = self.sock.recv(4096)
-        except BlockingIOError:
-            # Resource temporarily unavailable (errno EWOULDBLOCK)
-            pass
-        else:
             if data:
                 self._recv_buffer += data
+                return True 
             else:
-                raise RuntimeError("Peer closed.")
+                print("[INFO] Peer closed connection.")
+                return False 
+        except Exception as e:
+            print(f"[ERROR] Read error: {e}")
+            return False
 
     def _write(self):
-        if self._send_buffer:
-            print("sending", repr(self._send_buffer), "to", self.addr)
-            try:
-                # Should be ready to write
-                sent = self.sock.send(self._send_buffer)
-            except BlockingIOError:
-                # Resource temporarily unavailable (errno EWOULDBLOCK)
-                pass
-            else:
-                self._send_buffer = self._send_buffer[sent:]
-                # Close when the buffer is drained. The response has been sent.
-                if sent and not self._send_buffer:
-                    self.close()
+        try:
+            print(f"[DEBUG] Sending message to {self.addr}")
+            sent = self.sock.send(self._send_buffer) 
+            self._send_buffer = self._send_buffer[sent:]
+
+            if not self._send_buffer:
+                self.selector.modify(self.sock, selectors.EVENT_READ, data=self)
+            return True 
+        except Exception as e:
+            print(f"[ERROR] Write error: {e}")
+            return False
 
     def _json_encode(self, obj, encoding):
         return json.dumps(obj, ensure_ascii=False).encode(encoding)
@@ -108,9 +106,11 @@ _______________________________________________________
 
     def process_events(self, mask):
         if mask & selectors.EVENT_READ:
-            self.read()
-        if mask & selectors.EVENT_WRITE:
-            self.write()
+            if not self._read(): 
+                self.close()
+        if mask & selectors.EVENT_WRITE and self._send_buffer:
+           if not self._write(): 
+                self.close()
 
     def read(self):
         self._read()
@@ -134,25 +134,12 @@ _______________________________________________________
         self._write()
 
     def close(self):
-        print("closing connection to", self.addr)
+        print(f"[INFO] Closing connection to {self.addr}")
         try:
-            self.selector.unregister(self.sock)
+            self.selector.unregister(self.sock) 
         except Exception as e:
-            print(
-                f"error: selector.unregister() exception for",
-                f"{self.addr}: {repr(e)}",
-            )
-
-        try:
-            self.sock.close()
-        except OSError as e:
-            print(
-                f"error: socket.close() exception for",
-                f"{self.addr}: {repr(e)}",
-            )
-        finally:
-            # Delete reference to socket object for garbage collection
-            self.sock = None
+            print(f"[WARNING] Error during unregister: {e}")
+        self.sock.close()
 
     def process_protoheader(self):
         hdrlen = 2
@@ -204,3 +191,8 @@ _______________________________________________________
         message = self._create_message(**response)
         self.response_created = True
         self._send_buffer += message
+
+    def send_json(self, content):
+        encoded_content = self._json_encode(content, "utf-8")
+        self._send_buffer += encoded_content
+        self.selector.modify(self.sock, selectors.EVENT_WRITE, data=self)
