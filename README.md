@@ -1,7 +1,6 @@
 # Connect Four Game
 This is a simple Connect Four game implemented using Python and sockets.
-## NOTE 
-As of 10/20/24 23:00 MST work for sprint 2 has not been uploaded, I went on a very big rabbit hole today that has resulted in non functioning code, I will continue on tomorrow.  
+
 
 **How to play:** (To be implemented)
 1. **Start the server:** `./server.py <host> <port>`
