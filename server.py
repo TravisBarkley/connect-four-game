@@ -19,31 +19,25 @@ def accept_wrapper(sock):
     print(f"Accepted connection from {addr}")
     conn.setblocking(False)
 
-    try:
-        if sel.get_key(conn):
-            print(f"[WARNING] Connection {addr} is already registered. Skipping registration.")
-            return
-    except KeyError:
-        pass
-
-    message = libserver.Message(sel, conn, addr)
-
     if len(lobby["players"]) < 2:
+        # Register the connection and add the player to the lobby.
+        message = libserver.Message(sel, conn, addr)
         lobby["players"].append(message)
         sel.register(conn, selectors.EVENT_READ, data=message)
         print(f"[INFO] Player {addr} joined. Total players: {len(lobby['players'])}")
 
-        if len(lobby["players"]) == 1:
-            message.send_json({
-                "type": "info",
-                "content": f"Waiting for an opponent. Lobby code: {lobby['code']}"
-            })
-        elif len(lobby["players"]) == 2:
+        if len(lobby["players"]) == 2:
             broadcast({"type": "start", "content": "Game starting!"})
     else:
-        print("[INFO] Lobby is full. Closing connection.")
-        message.send_json({"type": "error", "content": "Lobby is full. Connection closed."})
-        message.close()
+        # Send the error message immediately and close the connection.
+        print(f"[INFO] Lobby is full. Closing connection from {addr}.")
+        try:
+            conn.send(
+                b'{"type": "error", "content": "Lobby is full. Connection closed."}'
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed to send error message: {e}")
+        conn.close()
 
 def handle_message(message, data):
     action = data.get("content", {}).get("action")
@@ -52,23 +46,17 @@ def handle_message(message, data):
     if action == "join":
         if len(lobby["players"]) < 2:
             lobby["players"].append(message)
-            print(f"[INFO] Player added to the lobby. Current players: {len(lobby['players'])}")
+            print(f"[INFO] Player {message.addr} joined. Total players: {len(lobby['players'])}")
 
             message.send_json({
                 "type": "info",
-                "content": f"Joined lobby {lobby['code']}."
+                "content": f"Waiting for an opponent. Lobby code: {lobby['code']}"
             })
 
-            if len(lobby["players"]) == 1:
-                message.send_json({
-                    "type": "info",
-                    "content": f"Waiting for opponent. Lobby code: {lobby['code']}"
-                })
-            else:
-                print("[INFO] Both players joined. Starting game!")
+            if len(lobby["players"]) == 2:
                 broadcast({"type": "start", "content": "Game starting!"})
         else:
-            print("[INFO] Lobby is full. Rejecting connection.")
+            print(f"[INFO] Lobby is full. Closing connection from {message.addr}.")
             message.send_json({"type": "error", "content": "Lobby is full. Connection closed."})
             message.close()
 
@@ -76,13 +64,25 @@ def handle_message(message, data):
         print(f"[INFO] Player {message.addr} quit.")
         if message in lobby["players"]:
             lobby["players"].remove(message)
-            broadcast({"type": "info", "content": "Opponent disconnected."})
-        message.close()
+        message.close()  # Close the connection immediately.
+
+def close_connection(message):
+    """Unregister and close the connection properly."""
+    print(f"[INFO] Closing connection to {message.addr}")
+    try:
+        sel.unregister(message.sock)  # Unregister the socket from the selector.
+    except KeyError:
+        print(f"[WARNING] Tried to unregister {message.addr}, but it was not registered.")
+    message.sock.close()
 
 def broadcast(msg):
     print(f"[DEBUG] Broadcasting message: {msg}")
-    for player in lobby["players"]:
-        player.send_json(msg)
+    for player in list(lobby["players"]):
+        try:
+            player.send_json(msg)
+        except Exception as e:
+            print(f"[WARNING] Could not send message to {player.addr}: {e}")
+            player.close()
 
 if len(sys.argv) != 3:
     print("Usage:", sys.argv[0], "<host> <port>")

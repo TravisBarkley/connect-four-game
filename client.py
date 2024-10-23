@@ -4,6 +4,7 @@ import sys
 import socket
 import selectors
 import traceback
+import json
 import struct
 
 from libclient import Message
@@ -23,46 +24,58 @@ def start_connection(host, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setblocking(False)
     sock.connect_ex(addr)
-    message = Message(sel, sock, addr, None)
-    sel.register(sock, selectors.EVENT_READ | selectors.EVENT_WRITE, data=message)
-    return message
+    sel.register(sock, selectors.EVENT_READ, data=None)
+    return sock
+
+def receive_message(sock):
+    try:
+        events = sel.select(timeout=1)
+        for key, mask in events:
+            if mask & selectors.EVENT_READ:
+                data = sock.recv(4096)
+                if data:
+                    msg = json.loads(data.decode("utf-8"))
+                    print(f"Server response: {msg['content']}")
+                else:
+                    print("[INFO] Server closed the connection.")
+                    sock.close()
+                    return
+    except Exception as e:
+        print(f"[ERROR] Failed to receive message: {e}")
 
 if len(sys.argv) != 3:
     print("Usage:", sys.argv[0], "<host> <port>")
     sys.exit(1)
 
 host, port = sys.argv[1], int(sys.argv[2])
-message = start_connection(host, port)
-
+sock = start_connection(host, port)
+receive_message(sock)
 try:
     while True:
         action = input("Enter command ('join <code>' or 'quit'): ").strip()
         if action.startswith("join"):
             _, code = action.split()
-            request = create_request("join", code)
+            request = {
+                "type": "text/json",
+                "encoding": "utf-8",
+                "content": {"action": "join", "code": code}
+            }
+            message = Message(sel, sock, addr=None, request=request)
+            message.queue_request()
+
         elif action == "quit":
-            request = create_request("quit")
-            message.request = request
+            request = {
+                "type": "text/json",
+                "encoding": "utf-8",
+                "content": {"action": "quit"}
+            }
+            message = Message(sel, sock, addr=None, request=request)
             message.queue_request()
             print("Exiting...")
             break
+
         else:
             print("Unknown command. Try 'join <code>' or 'quit'.")
-            continue
-
-        message.request = request  # Assign the request.
-        message.queue_request()
-
-        events = sel.select(timeout=1)
-        for key, mask in events:
-            msg = key.data
-            try:
-                msg.process_events(mask)
-            except Exception as e:
-                print(f"Error: {e}")
-                msg.close()
-                sys.exit(1)
-
 except KeyboardInterrupt:
     print("Caught keyboard interrupt, exiting")
 finally:
