@@ -1,125 +1,105 @@
 #!/usr/bin/env python3
 
-import sys
+import time
 import socket
-import selectors
-import traceback
+import sys
+import threading
 import random
-import libserver
-
-sel = selectors.DefaultSelector()
-lobby = {"code": None, "players": []}
-
-def create_lobby_code():
-    return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=4))
-
-
-def accept_wrapper(sock):
-    conn, addr = sock.accept()
-    print(f"Accepted connection from {addr}")
-    conn.setblocking(False)
-
-    if len(lobby["players"]) < 2:
-        # Register the connection and add the player to the lobby.
-        message = libserver.Message(sel, conn, addr)
-        lobby["players"].append(message)
-        sel.register(conn, selectors.EVENT_READ, data=message)
-        print(f"[INFO] Player {addr} joined. Total players: {len(lobby['players'])}")
-
-        if len(lobby["players"]) == 2:
-            broadcast({"type": "start", "content": "Game starting!"})
-    else:
-        # Send the error message immediately and close the connection.
-        print(f"[INFO] Lobby is full. Closing connection from {addr}.")
-        try:
-            conn.send(
-                b'{"type": "error", "content": "Lobby is full. Connection closed."}'
-            )
-        except Exception as e:
-            print(f"[ERROR] Failed to send error message: {e}")
-        conn.close()
-
-def handle_message(message, data):
-    action = data.get("content", {}).get("action")
-    print(f"[DEBUG] Received action: {action} from {message.addr}")
-
-    if action == "join":
-        if len(lobby["players"]) < 2:
-            lobby["players"].append(message)
-            print(f"[INFO] Player {message.addr} joined. Total players: {len(lobby['players'])}")
-
-            message.send_json({
-                "type": "info",
-                "content": f"Waiting for an opponent. Lobby code: {lobby['code']}"
-            })
-
-            if len(lobby["players"]) == 2:
-                broadcast({"type": "start", "content": "Game starting!"})
-        else:
-            print(f"[INFO] Lobby is full. Closing connection from {message.addr}.")
-            message.send_json({"type": "error", "content": "Lobby is full. Connection closed."})
-            message.close()
-
-    elif action == "quit":
-        print(f"[INFO] Player {message.addr} quit.")
-        if message in lobby["players"]:
-            lobby["players"].remove(message)
-        message.close()  # Close the connection immediately.
-
-def close_connection(message):
-    """Unregister and close the connection properly."""
-    print(f"[INFO] Closing connection to {message.addr}")
-    try:
-        sel.unregister(message.sock)  # Unregister the socket from the selector.
-    except KeyError:
-        print(f"[WARNING] Tried to unregister {message.addr}, but it was not registered.")
-    message.sock.close()
-
-def broadcast(msg):
-    print(f"[DEBUG] Broadcasting message: {msg}")
-    for player in list(lobby["players"]):
-        try:
-            player.send_json(msg)
-        except Exception as e:
-            print(f"[WARNING] Could not send message to {player.addr}: {e}")
-            player.close()
-
-if len(sys.argv) != 3:
-    print("Usage:", sys.argv[0], "<host> <port>")
-    sys.exit(1)
+import string
 
 host, port = sys.argv[1], int(sys.argv[2])
-lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-lsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-lsock.bind((host, port))
-lsock.listen()
-print(f"Listening on {host}:{port}")
-lsock.setblocking(False)
+HEADER = 64
+ADDR = (host, port)
 
-lobby["code"] = create_lobby_code()
-print(f"Lobby code: {lobby['code']}")
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.bind(ADDR)
 
-sel.register(lsock, selectors.EVENT_READ, data=None)
+active_connections_lock = threading.Lock()
+active_connections = 0
+lobbies = {}
 
-try:
-    while True:
-        events = sel.select(timeout=None)
-        for key, mask in events:
-            if key.data is None:
-                accept_wrapper(key.fileobj)
-            else:
-                message = key.data
-                try:
-                    data = message.process_events(mask)
-                    if data:
-                        handle_message(message, data)
-                except Exception as e:
-                    print(f"[ERROR] {e}")
-                    if message in lobby["players"]:
-                        lobby["players"].remove(message)
-                        broadcast({"type": "info", "content": "Opponent disconnected."})
-                    message.close()
-except KeyboardInterrupt:
-    print("[INFO] Server shutting down...")
-finally:
-    sel.close()
+def generate_game_code():
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+
+
+def send_message(conn, message):
+    message = message.encode("utf-8")
+    msg_length = len(message)
+    
+    # Prepare a HEADER-length length header
+    send_length = f"{msg_length:<{HEADER}}".encode("utf-8")
+    payload = send_length + message  # Concatenate length header and message
+
+    conn.sendall(payload)  # Send the whole payload in one go
+
+def handle_client(conn, addr):
+    global active_connections
+    print(f"New Client Connected: {addr}.")
+
+    connected = True
+    lobby_code = None
+    while connected:
+        msg_length = conn.recv(HEADER).decode("utf-8").strip()
+        if msg_length:
+            try:
+                msg_length = int(msg_length)
+                msg = conn.recv(msg_length).decode("utf-8")
+                print(f"[{addr}] {msg}")
+
+                if msg.startswith("CREATE_LOBBY"):
+                    lobby_code = generate_game_code()
+                    lobbies[lobby_code] = []
+                    send_message(conn, f"LOBBY_CREATED {lobby_code}")
+                    print(f"Lobby {lobby_code} created by {addr}")
+
+                elif msg.startswith("JOIN_LOBBY"):
+                    lobby_code = msg.split()[1]
+                    if lobby_code in lobbies and len(lobbies[lobby_code]) < 2:
+                        lobbies[lobby_code].append(conn)
+                        player_number = len(lobbies[lobby_code])
+                        send_message(conn, f"JOINED_LOBBY {lobby_code}")
+                        send_message(conn, f"You are Player {player_number}")
+                        print(f"{addr} joined lobby {lobby_code} as Player {player_number}")
+                        for client in lobbies[lobby_code]:
+                            if client != conn:
+                                send_message(client, f"Player {player_number} has joined the lobby {lobby_code}")
+                    else:
+                        send_message(conn, "LOBBY_FULL_OR_NOT_EXIST")
+
+                elif msg == "quit":
+                    connected = False
+            except ValueError:
+                print(f"[ERROR] An error occurred: invalid message length '{msg_length}'")
+
+    conn.close()
+    
+    with active_connections_lock:
+        active_connections -= 1
+        print(f"Active Connections: {active_connections}")
+
+    if lobby_code and conn in lobbies.get(lobby_code, []):
+        lobbies[lobby_code].remove(conn)
+        if not lobbies[lobby_code]:
+            del lobbies[lobby_code]
+            print(f"Lobby {lobby_code} closed")
+
+def start():
+    global active_connections
+    server.listen()
+    print(f"Listening on {host}:{port}")
+    try:
+        while True:
+            conn, addr = server.accept()
+            with active_connections_lock:
+                active_connections += 1
+                print(f"Active Connections: {active_connections}")
+            thread = threading.Thread(target=handle_client, args=(conn, addr))
+            thread.start()
+    except KeyboardInterrupt:
+        print("\nServer is shutting down...")
+    finally:
+        server.close()
+
+if __name__ == "__main__":
+    start()
