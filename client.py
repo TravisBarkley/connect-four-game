@@ -56,6 +56,7 @@ def receive():
             break
 
 def print_commands():
+    print("Welcome to Connect Four!")
     print("Available commands:")
     print("1. create - Create a new lobby")
     print("2. join <game_code> - Join an existing lobby")
@@ -92,6 +93,9 @@ try:
                 lobby_msg = input()
                 if lobby_msg.lower() == "quit":
                     send(lobby_msg)
+                    stop_receiving.set()
+                    receive_thread.join()
+                    client.close()
                     break
                 elif lobby_msg.lower() == "view":
                     send("VIEW_PLAYERS")
