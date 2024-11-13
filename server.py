@@ -39,6 +39,7 @@ def handle_client(conn, addr):
 
     connected = True
     lobby_code = None
+    player_name = None
     while connected:
         msg_length = conn.recv(HEADER).decode("utf-8").strip()
         if msg_length:
@@ -56,16 +57,29 @@ def handle_client(conn, addr):
                 elif msg.startswith("JOIN_LOBBY"):
                     lobby_code = msg.split()[1]
                     if lobby_code in lobbies and len(lobbies[lobby_code]) < 2:
-                        lobbies[lobby_code].append(conn)
+                        lobbies[lobby_code].append((conn, addr, "Player"))
                         player_number = len(lobbies[lobby_code])
                         send_message(conn, f"JOINED_LOBBY {lobby_code}")
                         send_message(conn, f"You are Player {player_number}")
                         print(f"{addr} joined lobby {lobby_code} as Player {player_number}")
-                        for client in lobbies[lobby_code]:
+                        # Notify all clients in the lobby about the new player
+                        for client, _, _ in lobbies[lobby_code]:
                             if client != conn:
                                 send_message(client, f"Player {player_number} has joined the lobby {lobby_code}")
                     else:
                         send_message(conn, "LOBBY_FULL_OR_NOT_EXIST")
+
+                elif msg.startswith("SET_NAME"):
+                    player_name = msg.split()[1]
+                    for i, (client, client_addr, _) in enumerate(lobbies[lobby_code]):
+                        if client == conn:
+                            lobbies[lobby_code][i] = (client, client_addr, player_name)
+                            send_message(conn, f"Name set to {player_name}")
+                            break
+
+                elif msg == "VIEW_PLAYERS":
+                    player_list = [name for _, _, name in lobbies[lobby_code]]
+                    send_message(conn, f"Players in lobby: {', '.join(player_list)}")
 
                 elif msg == "quit":
                     connected = False
@@ -79,7 +93,7 @@ def handle_client(conn, addr):
         print(f"Active Connections: {active_connections}")
 
     if lobby_code and conn in lobbies.get(lobby_code, []):
-        lobbies[lobby_code].remove(conn)
+        lobbies[lobby_code] = [client for client in lobbies[lobby_code] if client[0] != conn]
         if not lobbies[lobby_code]:
             del lobbies[lobby_code]
             print(f"Lobby {lobby_code} closed")
