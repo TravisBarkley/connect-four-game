@@ -58,21 +58,21 @@ def receive():
 def print_commands():
     print("Welcome to Connect Four!")
     print("Available commands:")
-    print("1. create - Create a new lobby")
-    print("2. join <game_code> - Join an existing lobby")
-    print("3. quit - Quit the client")
+    print("- create - Create a new lobby")
+    print("- join <game_code> - Join an existing lobby")
+    print("- quit - Quit the client")
 
 def print_lobby_commands():
     print("Lobby commands:")
-    print("1. view - View player list")
-    print("2. name <new_name> - Set your player name")
-    print("3. quit - Quit the lobby")
+    print("- view - View player list")
+    print("- name <new_name> - Set your player name")
+    print("- quit - Quit the lobby")
 
 receive_thread = threading.Thread(target=receive)
 receive_thread.start()
 
 print_commands()
-print("Type 'quit' to exit.")
+# print("Type 'quit' to exit.")
 try:
     while True:
         msg = input()
