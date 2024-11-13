@@ -22,16 +22,12 @@ lobbies = {}
 def generate_game_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
 
-
 def send_message(conn, message):
     message = message.encode("utf-8")
     msg_length = len(message)
-    
-    # Prepare a HEADER-length length header
     send_length = f"{msg_length:<{HEADER}}".encode("utf-8")
-    payload = send_length + message  # Concatenate length header and message
-
-    conn.sendall(payload)  # Send the whole payload in one go
+    payload = send_length + message
+    conn.sendall(payload)
 
 def handle_client(conn, addr):
     global active_connections
@@ -80,6 +76,21 @@ def handle_client(conn, addr):
                 elif msg == "VIEW_PLAYERS":
                     player_list = [name for _, _, name in lobbies[lobby_code]]
                     send_message(conn, f"Players in lobby: {', '.join(player_list)}")
+
+                elif msg == "START_GAME":
+                    if lobby_code in lobbies and len(lobbies[lobby_code]) == 2:
+                        starter_name = None
+                        for client, _, name in lobbies[lobby_code]:
+                            if client == conn:
+                                starter_name = name
+                                break
+                        for client, _, _ in lobbies[lobby_code]:
+                            send_message(client, f"Game starting in 5 seconds. Started by {starter_name}.")
+                        time.sleep(5)
+                        for client, _, _ in lobbies[lobby_code]:
+                            send_message(client, "Game has started!")
+                    else:
+                        send_message(conn, "Cannot start game. Lobby must have 2 players.")
 
                 elif msg == "quit":
                     connected = False
