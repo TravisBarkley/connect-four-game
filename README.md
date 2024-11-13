@@ -8,7 +8,7 @@ As wou may have noticed I kinda tore down the game and started over. I watched s
 1. **Start the server:** `./server.py <host> <port>`
 2. **Connect clients:** `./client.py <host> <port>
 3. **Play the game:** Players take turns entering their moves. The first player to get four in a row wins!
-4. **Reality:** After connecting to the server the client has a listed set of commands.
+4. **Reality:** After connecting to the server the client has a listed set of commands. From here you can join a lobby with more commands including `start`. `start` currently initiates a starting sequence but does not start the game. 
 
 **Technologies used:**
 * Python

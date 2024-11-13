@@ -66,6 +66,7 @@ def print_lobby_commands():
     print("Lobby commands:")
     print("- view - View player list")
     print("- name <new_name> - Set your player name")
+    print("- start - Start the game")
     print("- quit - Quit the lobby")
 
 receive_thread = threading.Thread(target=receive)
@@ -102,6 +103,8 @@ try:
                 elif lobby_msg.lower().startswith("name"):
                     _, new_name = lobby_msg.split()
                     send(f"SET_NAME {new_name}")
+                elif lobby_msg.lower() == "start":
+                    send("START_GAME")
                 else:
                     send(lobby_msg)
         else:
