@@ -105,6 +105,9 @@ try:
                     send(f"SET_NAME {new_name}")
                 elif lobby_msg.lower() == "start":
                     send("START_GAME")
+                elif lobby_msg.lower().startswith("move"):
+                    _, column = lobby_msg.split()
+                    send(f"MOVE {column}")
                 else:
                     send(lobby_msg)
         else:

@@ -29,6 +29,28 @@ def send_message(conn, message):
     payload = send_length + message
     conn.sendall(payload)
 
+def initialize_board():
+    return [[' ' for _ in range(7)] for _ in range(6)]
+
+def print_board(board):
+    board_str = " \n"
+    board_str += "\n".join(["|".join(row) for row in board])
+    board_str += "\n 0 1 2 3 4 5 6\n"
+    return board_str
+
+def check_winner(board, player):
+    for row in range(6):
+        for col in range(7):
+            if col + 3 < 7 and all(board[row][col + i] == player for i in range(4)):
+                return True
+            if row + 3 < 6 and all(board[row + i][col] == player for i in range(4)):
+                return True
+            if col + 3 < 7 and row + 3 < 6 and all(board[row + i][col + i] == player for i in range(4)):
+                return True
+            if col - 3 >= 0 and row + 3 < 6 and all(board[row + i][col - i] == player for i in range(4)):
+                return True
+    return False
+
 def handle_client(conn, addr):
     global active_connections
     print(f"New Client Connected: {addr}.")
@@ -36,6 +58,9 @@ def handle_client(conn, addr):
     connected = True
     lobby_code = None
     player_name = None
+    board = None
+    current_turn = None
+    players = []
     while connected:
         msg_length = conn.recv(HEADER).decode("utf-8").strip()
         if msg_length:
@@ -54,11 +79,12 @@ def handle_client(conn, addr):
                     lobby_code = msg.split()[1]
                     if lobby_code in lobbies and len(lobbies[lobby_code]) < 2:
                         lobbies[lobby_code].append((conn, addr, "Player"))
+                        players = [client[0] for client in lobbies[lobby_code]] 
                         player_number = len(lobbies[lobby_code])
                         send_message(conn, f"JOINED_LOBBY {lobby_code}")
                         send_message(conn, f"You are Player {player_number}")
                         print(f"{addr} joined lobby {lobby_code} as Player {player_number}")
-                        # Notify all clients in the lobby about the new player
+
                         for client, _, _ in lobbies[lobby_code]:
                             if client != conn:
                                 send_message(client, f"Player {player_number} has joined the lobby {lobby_code}")
@@ -79,18 +105,45 @@ def handle_client(conn, addr):
 
                 elif msg == "START_GAME":
                     if lobby_code in lobbies and len(lobbies[lobby_code]) == 2:
-                        starter_name = None
-                        for client, _, name in lobbies[lobby_code]:
-                            if client == conn:
-                                starter_name = name
-                                break
+                        players = [client[0] for client in lobbies[lobby_code]] 
+                        starter_name = next((name for client, _, name in lobbies[lobby_code] if client == conn), "Unknown")
                         for client, _, _ in lobbies[lobby_code]:
                             send_message(client, f"Game starting in 5 seconds. Started by {starter_name}.")
                         time.sleep(5)
+                        board = initialize_board()
+                        current_turn = players[0] 
                         for client, _, _ in lobbies[lobby_code]:
                             send_message(client, "Game has started!")
+                            send_message(client, print_board(board))
+                            send_message(client, f"{starter_name}'s turn.")
                     else:
                         send_message(conn, "Cannot start game. Lobby must have 2 players.")
+
+                elif msg.startswith("MOVE"):
+                    if conn == current_turn:
+                        column = int(msg.split()[1])
+                        if column < 0 or column >= 7 or board[0][column] != ' ':
+                            send_message(conn, "Invalid move. Try again.")
+                        else:
+                            for row in range(5, -1, -1):
+                                if board[row][column] == ' ':
+                                    board[row][column] = 'X' if conn == players[0] else 'O'
+                                    break
+                            if check_winner(board, 'X' if conn == players[0] else 'O'):
+                                for client in players:
+                                    send_message(client, print_board(board))
+                                    send_message(client, f"{'Player 1' if conn == players[0] else 'Player 2'} wins!")
+                                connected = False
+                            else:
+                                if current_turn == players[0]:
+                                    current_turn = players[1]
+                                else:
+                                    current_turn = players[0]
+                                for client in players:
+                                    send_message(client, print_board(board))
+                                    send_message(client, f"{'Player 1' if current_turn == players[0] else 'Player 2'}'s turn.")
+                    else:
+                        send_message(conn, "It's not your turn.")
 
                 elif msg == "quit":
                     connected = False
