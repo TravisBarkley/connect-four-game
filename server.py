@@ -6,10 +6,17 @@ import sys
 import threading
 import random
 import string
+import argparse
 
-host, port = sys.argv[1], int(sys.argv[2])
-HEADER = 64
+# Argument parsing
+parser = argparse.ArgumentParser(description="Server for listening to client connections.")
+parser.add_argument('-p', '--port', required=True, type=int, help="Listening port of the server")
+args = parser.parse_args()
+
+host = '0.0.0.0'
+port = args.port
 ADDR = (host, port)
+HEADER = 64
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

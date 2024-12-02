@@ -2,8 +2,15 @@
 import socket
 import sys
 import threading
+import argparse
 
-host, port = sys.argv[1], int(sys.argv[2])
+# Argument parsing
+parser = argparse.ArgumentParser(description="Client for connecting to the server.")
+parser.add_argument('-i', '--ip', required=True, help="IP address or DNS of the server")
+parser.add_argument('-p', '--port', required=True, type=int, help="Listening port of the server")
+args = parser.parse_args()
+
+host, port = args.ip, args.port
 HEADER = 64
 ADDR = (host, port)
 
