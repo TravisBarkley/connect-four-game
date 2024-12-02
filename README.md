@@ -1,7 +1,7 @@
 # Connect Four Game
 This is a simple Connect Four game implemented using Python and sockets.
 
-**How to play:** (To be implemented)
+**How to play:** 
 1. **Start the server:** `./server.py <host> <port>`
 2. **Connect clients:** `./client.py <host> <port>
 3. **In the Menu:** Upon launching the client you will be loaded into a menu. Here you can create and join lobbies. 
