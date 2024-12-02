@@ -4,7 +4,6 @@ import sys
 import threading
 import argparse
 
-# Argument parsing
 parser = argparse.ArgumentParser(description="Client for connecting to the server.")
 parser.add_argument('-i', '--ip', required=True, help="IP address or DNS of the server")
 parser.add_argument('-p', '--port', required=True, type=int, help="Listening port of the server")
@@ -94,7 +93,7 @@ try:
         elif msg.lower().startswith("join"):
             _, game_code = msg.split()
             send(f"JOIN_LOBBY {game_code}")
-            joined_lobby.wait()  # Wait until the player has joined the lobby
+            joined_lobby.wait() 
             print_lobby_commands()
             while True:
                 lobby_msg = input()
