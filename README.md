@@ -8,6 +8,9 @@ This is a simple Connect Four game implemented using Python and sockets.
 4. **In the Lobby:** Once in the lobby you can view the players in the lobby and change yourname using the shown commands. When 2 players have joined you may start the game. 
 5. **In the Game:** Once in the game players will enter alternating `move <column>` comands to drop their chip into a column. The first player to get 4 in a row wins!
 
+**Security/Risk Evaluation:**
+
+The game has some security concerns that can be improved. Right now, the messages between the client and server are not encrypted, so anyone could potentially intercept them. In the future, using encryption like SSL/TLS could protect the data. The server is also at risk of being overloaded if someone intentionally creates too many lobbies or sends too much data. Adding limits to how many connections or actions are allowed could help. There’s no way to check who is connecting to the server, meaning anyone can join and take actions they shouldn’t. Adding user authentication could fix this. If two players try to do something at the same time, like make a move, it might cause problems because the server doesn’t manage those conflicts well. Using locks or other controls could prevent this. Finally, the server doesn’t handle unexpected disconnections or too much activity very well, which might cause crashes. Adding better ways to manage resources and timeouts for inactive players could make it more stable.
 
 **Technologies used:**
 * Python
