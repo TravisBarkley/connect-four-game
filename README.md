@@ -1,14 +1,13 @@
 # Connect Four Game
 This is a simple Connect Four game implemented using Python and sockets.
 
-***Note***
-As wou may have noticed I kinda tore down the game and started over. I watched some sockets YT tutorials and realized that I really wasn't understanding what I was doing with the code I modified from HW3. So I have created something that I think is simpler for me and I know how to work on.
-
 **How to play:** (To be implemented)
 1. **Start the server:** `./server.py <host> <port>`
 2. **Connect clients:** `./client.py <host> <port>
-3. **Play the game:** Players take turns entering their moves. The first player to get four in a row wins!
-4. **Reality:** After connecting to the server the client has a listed set of commands. From here you can join a lobby with more commands including `start`. `start` currently initiates a starting sequence but does not start the game. 
+3. **In the Menu:** Upon launching the client you will be loaded into a menu. Here you can create and join lobbies. 
+4. **In the Lobby:** Once in the lobby you can view the players in the lobby and change yourname using the shown commands. When 2 players have joined you may start the game. 
+5. **In the Game:** Once in the game players will enter alternating `move <column>` comands to drop their chip into a column. The first player to get 4 in a row wins!
+
 
 **Technologies used:**
 * Python

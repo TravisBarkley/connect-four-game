@@ -73,7 +73,6 @@ receive_thread = threading.Thread(target=receive)
 receive_thread.start()
 
 print_commands()
-# print("Type 'quit' to exit.")
 try:
     while True:
         msg = input()
