@@ -6,10 +6,16 @@ import sys
 import threading
 import random
 import string
+import argparse
 
-host, port = sys.argv[1], int(sys.argv[2])
-HEADER = 64
+parser = argparse.ArgumentParser(description="Server for listening to client connections.")
+parser.add_argument('-p', '--port', required=True, type=int, help="Listening port of the server")
+args = parser.parse_args()
+
+host = '0.0.0.0'
+port = args.port
 ADDR = (host, port)
+HEADER = 64
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -154,26 +160,21 @@ def handle_client(conn, addr):
                             if column < 0 or column >= 7 or board[0][column] != ' ':
                                 send_message(conn, "Invalid move. Try again.")
                             else:
-                                # Make the move
                                 for row in range(5, -1, -1):
                                     if board[row][column] == ' ':
                                         board[row][column] = 'X' if current_turn == 0 else 'O'
                                         break
                                     
-                                # Check for a winner
                                 if check_winner(board, 'X' if current_turn == 0 else 'O'):
                                     for client in players:
                                         send_message(client, print_board(board))
                                         send_message(client, f"{player_names[current_turn]} wins!")
-                                    # End the game by disconnecting players
                                     for client in players:
                                         client.close()
                                     break
                                 else:
-                                    # Switch turns
                                     lobbies[lobby_code]["current_turn"] = 1 - current_turn
                                     current_turn = lobbies[lobby_code]["current_turn"]
-                                    # Broadcast updated board and turn to all players
                                     for client in players:
                                         send_message(client, print_board(board))
                                         send_message(client, f"{player_names[current_turn]}'s turn.")
