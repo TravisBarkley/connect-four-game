@@ -47,7 +47,7 @@ def initialize_board():
 def print_board(board):
     board_str = " \n"
     board_str += "\n".join(["|".join(row) for row in board])
-    board_str += "\n 0 1 2 3 4 5 6\n"
+    board_str += "\n0 1 2 3 4 5 6\n"
     board_str += "\n- move <column> - to place a chip\n"
     return board_str
 
