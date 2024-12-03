@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import socket
-import sys
 import threading
 import argparse
 
@@ -54,12 +53,13 @@ def receive():
 
                 if msg.startswith("You are Player"):
                     joined_lobby.set()
+                elif "Game o" in msg:
+                    print_lobby_commands()
             else:
                 print(f"[ERROR] An error occurred: invalid message header '{msg_length_data}'")
         except Exception as e:
-            if not stop_receiving.is_set():
-                print(f"[ERROR] An error occurred: {e}")
-            break
+            print(f"[ERROR] {e}")
+            stop_receiving.set()
 
 def print_commands():
     print("Welcome to Connect Four!")
@@ -70,7 +70,7 @@ def print_commands():
 
 def print_lobby_commands():
     print("Lobby commands:")
-    print("- view - View player list")
+    print("- view - View player list and wins")
     print("- name <new_name> - Set your player name")
     print("- start - Start the game")
     print("- quit - Quit the lobby")

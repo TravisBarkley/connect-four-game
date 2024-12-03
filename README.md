@@ -6,7 +6,7 @@ This is a simple Connect Four game implemented using Python and sockets.
 2. **Connect clients:** `./client.py -i <host> -p <port>` (`./client.py -h` for help)
 3. **In the Menu:** Upon launching the client you will be loaded into a menu. Here you can create and join lobbies. 
 4. **In the Lobby:** Once in the lobby you can view the players in the lobby and change yourname using the shown commands. When 2 players have joined you may start the game. 
-5. **In the Game:** Once in the game players will enter alternating `move <column>` comands to drop their chip into a column. The first player to get 4 in a row wins!
+5. **In the Game:** Once in the game players will enter alternating `move <column>` comands to drop their chip into a column. The first player to get 4 in a row wins! After winning players will return to the lobby where they can play again and view the scores. 
 
 **Security/Risk Evaluation:**
 
