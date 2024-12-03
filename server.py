@@ -27,7 +27,7 @@ lobbies = {
         "players": [],
         "board": None,
         "current_turn": None,
-        "wins": [0, 0]  # Track wins for each player
+        "wins": [0, 0]  
     }
 }
 
