@@ -91,7 +91,11 @@ try:
         elif msg.lower() == "create":
             send("CREATE_LOBBY")
         elif msg.lower().startswith("join"):
-            _, game_code = msg.split()
+            parts0 = msg.split()
+            if len(parts0) < 2:
+                print("[ERROR] Missing game code. Usage: join <game_code>")
+                continue
+            _, game_code = parts0
             send(f"JOIN_LOBBY {game_code}")
             joined_lobby.wait() 
             print_lobby_commands()
@@ -106,12 +110,24 @@ try:
                 elif lobby_msg.lower() == "view":
                     send("VIEW_PLAYERS")
                 elif lobby_msg.lower().startswith("name"):
-                    _, new_name = lobby_msg.split()
+                    parts1 = lobby_msg.split()
+                    if len(parts1) < 2:
+                        print("[ERROR] Missing name. Usage: name <new_name>")
+                        continue
+                    _, new_name = parts1
                     send(f"SET_NAME {new_name}")
                 elif lobby_msg.lower() == "start":
                     send("START_GAME")
                 elif lobby_msg.lower().startswith("move"):
-                    _, column = lobby_msg.split()
+                    parts2 = lobby_msg.split()
+                    if len(parts2) < 2:
+                        print("[ERROR] Missing column. Usage: move <column>")
+                        continue
+                    try:
+                        column = int(parts2[1])
+                    except ValueError:
+                        print("[ERROR] Column must be a number.")
+                        continue
                     send(f"MOVE {column}")
                 else:
                     send(lobby_msg)
