@@ -53,6 +53,8 @@ def receive():
 
                 if msg.startswith("You are Player"):
                     joined_lobby.set()
+                elif msg == "LOBBY_FULL_OR_NOT_EXIST":
+                    joined_lobby.clear() 
                 elif "Game o" in msg:
                     print_lobby_commands()
             else:
@@ -60,6 +62,7 @@ def receive():
         except Exception as e:
             print(f"[ERROR] {e}")
             stop_receiving.set()
+
 
 def print_commands():
     print("Welcome to Connect Four!")
@@ -97,40 +100,41 @@ try:
                 continue
             _, game_code = parts0
             send(f"JOIN_LOBBY {game_code}")
-            joined_lobby.wait() 
-            print_lobby_commands()
-            while True:
-                lobby_msg = input()
-                if lobby_msg.lower() == "quit":
-                    send(lobby_msg)
-                    stop_receiving.set()
-                    receive_thread.join()
-                    client.close()
-                    break
-                elif lobby_msg.lower() == "view":
-                    send("VIEW_PLAYERS")
-                elif lobby_msg.lower().startswith("name"):
-                    parts1 = lobby_msg.split()
-                    if len(parts1) < 2:
-                        print("[ERROR] Missing name. Usage: name <new_name>")
-                        continue
-                    _, new_name = parts1
-                    send(f"SET_NAME {new_name}")
-                elif lobby_msg.lower() == "start":
-                    send("START_GAME")
-                elif lobby_msg.lower().startswith("move"):
-                    parts2 = lobby_msg.split()
-                    if len(parts2) < 2:
-                        print("[ERROR] Missing column. Usage: move <column>")
-                        continue
-                    try:
-                        column = int(parts2[1])
-                    except ValueError:
-                        print("[ERROR] Column must be a number.")
-                        continue
-                    send(f"MOVE {column}")
-                else:
-                    send(lobby_msg)
+            joined_lobby.wait(timeout=5)  # Optional: Add a timeout to prevent indefinite waiting
+            if joined_lobby.is_set():
+                print_lobby_commands()
+                while True:
+                    lobby_msg = input()
+                    if lobby_msg.lower() == "quit":
+                        send(lobby_msg)
+                        stop_receiving.set()
+                        receive_thread.join()
+                        client.close()
+                        break
+                    elif lobby_msg.lower() == "view":
+                        send("VIEW_PLAYERS")
+                    elif lobby_msg.lower().startswith("name"):
+                        parts1 = lobby_msg.split()
+                        if len(parts1) < 2:
+                            print("[ERROR] Missing name. Usage: name <new_name>")
+                            continue
+                        _, new_name = parts1
+                        send(f"SET_NAME {new_name}")
+                    elif lobby_msg.lower() == "start":
+                        send("START_GAME")
+                    elif lobby_msg.lower().startswith("move"):
+                        parts2 = lobby_msg.split()
+                        if len(parts2) < 2:
+                            print("[ERROR] Missing column. Usage: move <column>")
+                            continue
+                        try:
+                            column = int(parts2[1])
+                        except ValueError:
+                            print("[ERROR] Column must be a number.")
+                            continue
+                        send(f"MOVE {column}")
+                    else:
+                        send(lobby_msg)
         else:
             send(msg)
 except Exception as e:
