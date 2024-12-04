@@ -100,7 +100,7 @@ try:
                 continue
             _, game_code = parts0
             send(f"JOIN_LOBBY {game_code}")
-            joined_lobby.wait(timeout=5)  # Optional: Add a timeout to prevent indefinite waiting
+            joined_lobby.wait(timeout=5) 
             if joined_lobby.is_set():
                 print_lobby_commands()
                 while True:
