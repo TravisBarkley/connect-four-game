@@ -12,6 +12,14 @@ This is a simple Connect Four game implemented using Python and sockets.
 
 The game has some security concerns that can be improved. Right now, the messages between the client and server are not encrypted, so anyone could potentially intercept them. In the future, using encryption like SSL/TLS could protect the data. The server is also at risk of being overloaded if someone intentionally creates too many lobbies or sends too much data. Adding limits to how many connections or actions are allowed could help. There’s no way to check who is connecting to the server, meaning anyone can join and take actions they shouldn’t. Adding user authentication could fix this. If two players try to do something at the same time, like make a move, it might cause problems because the server doesn’t manage those conflicts well. Using locks or other controls could prevent this. Finally, the server doesn’t handle unexpected disconnections or too much activity very well, which might cause crashes. Adding better ways to manage resources and timeouts for inactive players could make it more stable.
 
+**Retrospective:** 
+
+This project had many ups and downs in the middle sprints, but in the end it came together and produced a product that I am content with. I was able to produce a working messaging system between the client and server that has input and error handling. I was able to produce a working and playable terminal game that has well defined commands and a user friendly interface. In the end, I believe this project gave me a better under standing in overall client server interactions. 
+
+One thing that could be improved on is the quit handling in the client. When in a lobby and quit is entered it quits the client and not out of the lobby, so there is not a way to exit a lobby without exiting the client. Also while exiting the client the terminal is not reset until the `enter` key is hit and then an error occurs. With myself, I would also like to have better time management and a more consistent devlopment schedule so I don't get behind on the sprints and have to scramble at times. 
+
+Moving forward with this project I would like to look into putting a graphic interface on top of it, there is already all of the game logic under the scenes and I think it would be fun to explore the creation of GUIs using python. 
+
 **Technologies used:**
 * Python
 * Sockets
